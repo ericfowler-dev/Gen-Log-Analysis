@@ -1,0 +1,21 @@
+{
+  "name": "genset-log-analyzer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react-swc": "^4.2.2",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^3.6.0",
+    "vite": "^7.2.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {}
+}
