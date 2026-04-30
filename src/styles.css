@@ -318,6 +318,104 @@ main {
   min-height: 390px;
 }
 
+.trend-controls {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.trend-presets {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trend-controls-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+  text-transform: uppercase;
+}
+
+.trend-presets button {
+  background: #f1f5f9;
+  border: 1px solid #d9e0ea;
+  border-radius: 6px;
+  color: #1e293b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+}
+
+.trend-presets button:hover {
+  background: #e2e8f0;
+}
+
+.trend-presets button.ghost {
+  background: transparent;
+  color: #64748b;
+}
+
+.trend-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trend-chip {
+  background: #ffffff;
+  border: 1px solid #d9e0ea;
+  border-radius: 999px;
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  transition: border-color 120ms, color 120ms;
+}
+
+.trend-chip:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.trend-chip.selected {
+  border-width: 2px;
+  font-weight: 700;
+  padding: 4px 11px;
+}
+
+.trend-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.trend-chip .chip-unit {
+  color: #94a3b8;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.trend-counter {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.trend-empty {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  display: flex;
+  font-size: 14px;
+  height: 320px;
+  justify-content: center;
+}
+
 .event-list {
   display: grid;
   gap: 10px;

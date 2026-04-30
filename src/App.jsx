@@ -31,48 +31,28 @@ const tabs = [
   { id: 'raw', label: 'Raw Tabs', icon: Table2 },
 ]
 
-const chartGroups = [
-  {
-    title: 'Engine',
-    lines: [
-      { key: 'rpm', name: 'RPM', color: '#2563eb' },
-      { key: 'frequency', name: 'Frequency', color: '#16a34a' },
-      { key: 'oilPressure', name: 'Oil Pressure', color: '#dc2626' },
-    ],
-  },
-  {
-    title: 'Temperatures',
-    lines: [
-      { key: 'coolantTemp', name: 'Coolant', color: '#ea580c' },
-      { key: 'oilTemp', name: 'Oil', color: '#9333ea' },
-      { key: 'intakeTemp', name: 'Intake', color: '#0891b2' },
-    ],
-  },
-  {
-    title: 'Electrical',
-    lines: [
-      { key: 'voltageAvg', name: 'Avg Voltage', color: '#0f766e' },
-      { key: 'kw', name: 'kW', color: '#7c3aed' },
-      { key: 'voltageImbalance', name: 'Voltage Imbalance %', color: '#be123c' },
-    ],
-  },
-  {
-    title: 'DiagSmart Engine',
-    lines: [
-      { key: 'calculatedLoad', name: 'Load %', color: '#b45309' },
-      { key: 'batteryVoltage', name: 'Battery V', color: '#0f766e' },
-      { key: 'railPressure', name: 'Rail Pressure', color: '#4f46e5' },
-    ],
-  },
-  {
-    title: 'Air / Exhaust',
-    lines: [
-      { key: 'turboSpeed', name: 'Turbo Speed', color: '#0369a1' },
-      { key: 'turboTemp', name: 'Turbo Temp', color: '#c2410c' },
-      { key: 'exhaustTempAvg', name: 'Avg Exhaust Temp', color: '#be123c' },
-      { key: 'exhaustTempSpread', name: 'Exhaust Spread', color: '#64748b' },
-    ],
-  },
+const TREND_PRESETS = [
+  { id: 'engine', label: 'Engine', keys: ['rpm', 'frequency', 'oilPressure'] },
+  { id: 'temperatures', label: 'Temperatures', keys: ['coolantTemp', 'oilTemp', 'intakeTemp'] },
+  { id: 'electrical', label: 'Electrical', keys: ['voltageAvg', 'kw', 'voltageImbalance'] },
+  { id: 'diagsmart', label: 'DiagSmart', keys: ['calculatedLoad', 'batteryVoltage', 'railPressure'] },
+  { id: 'airexhaust', label: 'Air / Exhaust', keys: ['turboSpeed', 'turboTemp', 'exhaustTempAvg', 'exhaustTempSpread'] },
+]
+
+const TREND_COLORS = [
+  '#2563eb', '#dc2626', '#16a34a', '#ea580c', '#9333ea',
+  '#0891b2', '#b45309', '#7c3aed', '#0f766e', '#be123c',
+]
+
+const MAX_TREND_SELECTIONS = 10
+
+const ENRICHED_TREND_CHANNELS = [
+  { key: 'voltageAvg', label: 'Voltage Avg', unit: 'V' },
+  { key: 'currentAvg', label: 'Current Avg', unit: 'A' },
+  { key: 'exhaustTempAvg', label: 'Exhaust Temp Avg', unit: 'deg' },
+  { key: 'exhaustTempSpread', label: 'Exhaust Temp Spread', unit: 'deg' },
+  { key: 'voltageImbalance', label: 'Voltage Imbalance', unit: '%' },
+  { key: 'currentImbalance', label: 'Current Imbalance', unit: '%' },
 ]
 
 function App() {
@@ -258,40 +238,153 @@ function Trends({ analysis }) {
     ? `${analysis.chartMeta.chartPointCount.toLocaleString()} rendered from ${analysis.chartMeta.fullSampleCount.toLocaleString()} samples`
     : `All ${analysis.chartMeta?.fullSampleCount?.toLocaleString() || analysis.chartData.length.toLocaleString()} samples`
 
+  const availableChannels = useMemo(() => buildTrendChannels(analysis), [analysis])
+  const channelByKey = useMemo(() => Object.fromEntries(availableChannels.map((channel) => [channel.key, channel])), [availableChannels])
+
+  const [selectedKeys, setSelectedKeys] = useState(() => {
+    const initial = TREND_PRESETS[0].keys.filter((key) => availableChannels.some((channel) => channel.key === key))
+    return initial.length ? initial : availableChannels.slice(0, 3).map((channel) => channel.key)
+  })
+
+  useEffect(() => {
+    setSelectedKeys((current) => current.filter((key) => availableChannels.some((channel) => channel.key === key)))
+  }, [availableChannels])
+
+  const colorByKey = useMemo(
+    () => Object.fromEntries(selectedKeys.map((key, index) => [key, TREND_COLORS[index % TREND_COLORS.length]])),
+    [selectedKeys],
+  )
+
+  const axisByKey = useMemo(() => assignTrendAxes(selectedKeys, analysis.chartData), [selectedKeys, analysis.chartData])
+  const usesRightAxis = Object.values(axisByKey).some((side) => side === 'right')
+
+  function toggleKey(key) {
+    setSelectedKeys((current) => {
+      if (current.includes(key)) return current.filter((existing) => existing !== key)
+      if (current.length >= MAX_TREND_SELECTIONS) return current
+      return [...current, key]
+    })
+  }
+
+  function applyPreset(preset) {
+    setSelectedKeys(
+      preset.keys
+        .filter((key) => availableChannels.some((channel) => channel.key === key))
+        .slice(0, MAX_TREND_SELECTIONS),
+    )
+  }
+
   return (
     <div className="view-stack">
-      {chartGroups.map((group) => (
-        <section className="panel chart-panel" key={group.title}>
-          <div className="panel-header">
-            <h2>{group.title}</h2>
-            <span>{chartLabel}</span>
+      <section className="panel chart-panel">
+        <div className="panel-header">
+          <h2>Trends</h2>
+          <span>{chartLabel}</span>
+        </div>
+
+        <div className="trend-controls">
+          <div className="trend-presets">
+            <span className="trend-controls-label">Presets</span>
+            {TREND_PRESETS.map((preset) => (
+              <button key={preset.id} type="button" onClick={() => applyPreset(preset)}>
+                {preset.label}
+              </button>
+            ))}
+            <button type="button" className="ghost" onClick={() => setSelectedKeys([])}>
+              Clear
+            </button>
           </div>
-          <ResponsiveContainer width="100%" height={310}>
+
+          <div className="trend-chips">
+            {availableChannels.map((channel) => {
+              const isSelected = selectedKeys.includes(channel.key)
+              const disabled = !isSelected && selectedKeys.length >= MAX_TREND_SELECTIONS
+              return (
+                <button
+                  key={channel.key}
+                  type="button"
+                  className={`trend-chip ${isSelected ? 'selected' : ''}`}
+                  onClick={() => toggleKey(channel.key)}
+                  disabled={disabled}
+                  style={isSelected ? { borderColor: colorByKey[channel.key], color: colorByKey[channel.key] } : undefined}
+                >
+                  {channel.label}
+                  {channel.unit ? <span className="chip-unit"> {channel.unit}</span> : null}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="trend-counter">
+            {selectedKeys.length} of {MAX_TREND_SELECTIONS} selected
+          </div>
+        </div>
+
+        {selectedKeys.length === 0 ? (
+          <div className="trend-empty">Select up to {MAX_TREND_SELECTIONS} parameters above to plot.</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={420}>
             <LineChart data={analysis.chartData} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#d8dee8" />
               <XAxis dataKey="timeLabel" minTickGap={36} tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} width={56} />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} width={56} />
+              {usesRightAxis ? <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} width={56} /> : null}
               <Tooltip labelFormatter={(label) => `Time ${label}`} />
               <Legend />
-              {group.lines.map((line) => (
-                <Line
-                  key={line.key}
-                  type="monotone"
-                  dataKey={line.key}
-                  name={line.name}
-                  stroke={line.color}
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls={false}
-                  isAnimationActive={false}
-                />
-              ))}
+              {selectedKeys.map((key) => {
+                const channel = channelByKey[key]
+                if (!channel) return null
+                const name = channel.unit ? `${channel.label} (${channel.unit})` : channel.label
+                return (
+                  <Line
+                    key={key}
+                    yAxisId={axisByKey[key] || 'left'}
+                    type="monotone"
+                    dataKey={key}
+                    name={name}
+                    stroke={colorByKey[key]}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
+                )
+              })}
             </LineChart>
           </ResponsiveContainer>
-        </section>
-      ))}
+        )}
+      </section>
     </div>
   )
+}
+
+function buildTrendChannels(analysis) {
+  const detected = (analysis.channels || [])
+    .filter((channel) => channel.type !== 'text')
+    .map((channel) => ({ key: channel.key, label: channel.label || channel.key, unit: channel.unit || '' }))
+  const detectedKeys = new Set(detected.map((channel) => channel.key))
+  const enriched = ENRICHED_TREND_CHANNELS.filter((channel) =>
+    !detectedKeys.has(channel.key) && (analysis.chartData || []).some((point) => Number.isFinite(point[channel.key])),
+  )
+  return [...detected, ...enriched]
+}
+
+function assignTrendAxes(selectedKeys, chartData) {
+  if (!selectedKeys.length || !chartData?.length) return {}
+  const maxByKey = {}
+  for (const key of selectedKeys) {
+    let max = 0
+    for (const point of chartData) {
+      const value = point[key]
+      if (Number.isFinite(value) && Math.abs(value) > max) max = Math.abs(value)
+    }
+    maxByKey[key] = max
+  }
+  const overall = Math.max(...Object.values(maxByKey))
+  if (!Number.isFinite(overall) || overall === 0) {
+    return Object.fromEntries(selectedKeys.map((key) => [key, 'left']))
+  }
+  return Object.fromEntries(selectedKeys.map((key) => [key, maxByKey[key] >= overall / 30 ? 'left' : 'right']))
 }
 
 function Events({ events }) {
